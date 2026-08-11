@@ -13,7 +13,7 @@ const adminMiddleware = async (req, res, next) => {
 
         const payload = jwt.verify(token, process.env.SECRET_KEY);
 
-        if (payload.role != admin) {
+        if (payload.role != 'admin') {
             return res.status(401).send('Token is invalid');
         }
 
