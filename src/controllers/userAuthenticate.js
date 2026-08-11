@@ -2,7 +2,7 @@ const validate = require('../utils/validate');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
-
+const redisClient = require('../config/redis');
 // register -> during the registration the user will get a jwt
 const register = async (req, res) => {
     try {
@@ -61,6 +61,29 @@ const login = async (req, res) => {
     }
 };
 
-//const logout = async (req, res) => {};
+const logout = async (req, res) => {
+    try {
+        const { token } = req.cookies;
+        // block the token inside redis
+        await redisClient.set(`token:${token}`, 'blocked');
+        // have to add the expiry time , which is present in the payload of the token
+        const payload = jwt.decode(token);
 
-module.exports = { register, login };
+        if (!payload || !payload.exp) {
+            return res.status(400).send('Invalid token.');
+        }
+
+        await redisClient.expireAt(`token:${token}`, payload.exp);
+        // now we have to remove the jwt present in the browser
+        res.clearCookie('token', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+        });
+        return res.status(200).send('Logged out successfully.');
+    } catch (error) {
+        return res.status(500).send('Logout failed.');
+    }
+};
+
+module.exports = { register, login, logout };
