@@ -4,7 +4,7 @@ const { register, login } = require('../controllers/userAuthenticate');
 
 AuthRouter.post('/register', register);
 AuthRouter.post('/login', login);
-// AuthRouter.post('/logout', logout);
+//AuthRouter.post('/logout', logout);
 // AuthRouter.get('/getProfile', getProfile);
 
 module.exports = AuthRouter;
