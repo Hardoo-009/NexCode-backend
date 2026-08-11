@@ -4,10 +4,13 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config({
     path: './.env',
 });
-
+const authRouter = require('./routes/userAuth');
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+// authRouter routes
+app.use('/user', authRouter);
+
 async function InitializeConnection() {
     try {
         await main();

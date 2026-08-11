@@ -55,8 +55,12 @@ const login = async (req, res) => {
             sameSite: 'None',
             maxAge: 60 * 60 * 1000,
         });
-        return res.status(200).send('User loggedIn successfully');
+        return res.status(200).send('User logged In successfully');
     } catch (error) {
-        return res.status(401).send('Error : ' + err.message);
+        return res.status(401).send('Error : ' + error.message);
     }
 };
+
+//const logout = async (req, res) => {};
+
+module.exports = { register, login };

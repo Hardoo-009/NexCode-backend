@@ -10,7 +10,7 @@ const validate = (body) => {
         throw new Error('Some field is missing');
     }
 
-    if (!validator.isEmail(body.email)) {
+    if (!validator.isEmail(body.emailId)) {
         throw new Error('EmailId is Wrong');
     }
 
