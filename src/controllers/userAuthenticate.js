@@ -9,10 +9,11 @@ const register = async (req, res) => {
         validate(req.body);
         const { firstName, emailId, password } = req.body;
         req.body.password = await bcrypt.hash(password, 10);
+        req.body.role = 'user';
         // make the user in the database then make the jwt and send it via cookie
         const user = await User.create(req.body);
         const token = jwt.sign(
-            { _id: user._id, emailId: emailId },
+            { _id: user._id, emailId: emailId, role: 'user' },
             process.env.SECRET_KEY,
             {
                 expiresIn: 60 * 60,
@@ -43,7 +44,7 @@ const login = async (req, res) => {
         if (!match) throw new Error('Invalid Credentials');
         // maybe the user is logging in with his created account so again make a jwt token and send it
         const token = jwt.sign(
-            { _id: user._id, emailId: emailId },
+            { _id: user._id, emailId: emailId, role: user.role },
             process.env.SECRET_KEY,
             {
                 expiresIn: 60 * 60,
@@ -86,4 +87,32 @@ const logout = async (req, res) => {
     }
 };
 
-module.exports = { register, login, logout };
+const adminRegister = async (req, res) => {
+    try {
+        // actually now the admin is being created , after going through the middleware
+        validate(req.body);
+        const { firstName, emailId, password } = req.body;
+        req.body.password = await bcrypt.hash(password, 10);
+        req.body.role = 'admin';
+        // make the user in the database then make the jwt and send it via cookie
+        const user = await User.create(req.body);
+        const token = jwt.sign(
+            { _id: user._id, emailId: emailId, role: 'admin' },
+            process.env.SECRET_KEY,
+            {
+                expiresIn: 60 * 60,
+            },
+        );
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+            maxAge: 60 * 60 * 1000,
+        });
+        return res.status(201).send('Admin registered successfully');
+    } catch (error) {
+        return res.status(400).send('Error Occured ' + error);
+    }
+};
+
+module.exports = { register, login, logout, adminRegister };
