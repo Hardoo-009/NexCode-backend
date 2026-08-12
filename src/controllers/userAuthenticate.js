@@ -86,18 +86,17 @@ const logout = async (req, res) => {
         return res.status(500).send('Logout failed.');
     }
 };
-
+// admin has the power of making a admin as well as a normal user
 const adminRegister = async (req, res) => {
     try {
         // actually now the admin is being created , after going through the middleware
         validate(req.body);
         const { firstName, emailId, password } = req.body;
         req.body.password = await bcrypt.hash(password, 10);
-        req.body.role = 'admin';
         // make the user in the database then make the jwt and send it via cookie
         const user = await User.create(req.body);
         const token = jwt.sign(
-            { _id: user._id, emailId: emailId, role: 'admin' },
+            { _id: user._id, emailId: emailId, role: user.role },
             process.env.SECRET_KEY,
             {
                 expiresIn: 60 * 60,
