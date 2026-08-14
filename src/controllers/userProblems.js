@@ -93,4 +93,145 @@ const createProblem = async (req, res) => {
   }
 };
 
-module.exports = { createProblem };
+const updateProblem = async (req, res) => {
+  // we will take the id , and update the whole document and also test if the preference solution and the test cases run ok
+  const { id } = req.params;
+
+  try {
+    if (!id) {
+      return res.status(400).send('Missing Id...');
+    }
+
+    const {
+      title,
+      description,
+      difficulty,
+      tags,
+      visibleTestCases,
+      hiddenTestCases,
+      starterCode,
+      referenceSolution,
+    } = req.body;
+
+    // the problem has to be present in the database
+    const DSAProblem = await Problem.findById(id);
+    if (!DSAProblem) {
+      return res.status(404).send('Problem not found');
+    }
+
+    if (
+      !Array.isArray(referenceSolution) ||
+      !Array.isArray(visibleTestCases) ||
+      referenceSolution.length === 0 ||
+      visibleTestCases.length === 0
+    ) {
+      return res
+        .status(400)
+        .send(
+          'referenceSolution and visibleTestCases are required and cannot be empty',
+        );
+    }
+    // then again same as the createproblem checks if the referecesolution is correct
+    for (const { language, completeCode } of referenceSolution) {
+      const languageId = getLanguageById(language);
+
+      if (!languageId) {
+        return res.status(400).json({
+          message: `Unsupported language: ${language}`,
+        });
+      }
+      // making a array of objects
+      const submissions = visibleTestCases.map((testCase) => ({
+        source_code: completeCode,
+        language_id: languageId,
+        stdin: testCase.input,
+        expected_output: testCase.output,
+      }));
+
+      const submitResult = await submitBatch(submissions);
+      const resultToken = submitResult.map((result) => result.token);
+      const testResult = await submitToken(resultToken);
+
+      for (const test of testResult) {
+        if (test.status_id !== 3) {
+          return res.status(400).json({
+            message: `${language} reference solution failed on visible test cases.`,
+            error: test,
+          });
+        }
+      }
+    }
+    // if the code reaches here that means there is no problem in the solution
+
+    const newProblem = await Problem.findByIdAndUpdate(
+      id,
+      { ...req.body }, // update these fields
+      { runValidators: true, new: true },
+    );
+    // normally in update operation the validators are not run by themselves so we have to make the runvalidators true ,and the new: true , tells to return the updated document not the previous one
+
+    res.status(200).send(newProblem);
+  } catch (error) {
+    res.status(500).send('Error: ' + err.message);
+  }
+};
+
+const deleteProblem = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (!id) {
+      return res.status(400).send('Missing Id...');
+    }
+
+    const deletedProblem = await Problem.findByIdAndDelete(id);
+
+    if (!deletedProblem) {
+      return res.status(404).send('Problem not Available...');
+    }
+    res.status(200).send('deletedProblem');
+  } catch (err) {
+    res.status(404).send('Error : ' + err);
+  }
+};
+
+const getProblemById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (!id) {
+      return res.status(400).send('Missing Id...');
+    }
+
+    const getProblem = await Problem.findById(id).select(
+      'title description difficulty tags visibleTestCases starterCode referenceSolution _id',
+    );
+
+    if (!getProblem) {
+      return res.status(404).send('Problem not Available...');
+    }
+    //Turn the Mongoose result into a normal object because we're going to add some extra properties to it, and we want those extra properties to appear in the API response.(ad-hoc)
+    const responseProblem = getProblem.toObject();
+
+    return res.status(200).send(responseProblem);
+  } catch (error) {
+    res.status(404).send('Error : ' + err);
+  }
+};
+
+const getAllProblem = async (req, res) => {
+  try {
+    const getProblem = await Problem.find({}).select(
+      '_id title difficulty tags',
+    );
+    // because the retured thing will be an array
+    if (getProblem.length == 0) {
+      return res.status(404).send('Problem not Available...');
+    }
+    res.status(200).send(getProblem);
+  } catch (err) {
+    res.status(404).send('Error : ' + err);
+  }
+};
+
+module.exports = { createProblem, updateProblem, deleteProblem };
