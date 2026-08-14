@@ -1,4 +1,9 @@
-const { getLanguageById, submitBatch } = require('../utils/problemUtility');
+const Problem = require('../models/problems');
+const {
+  getLanguageById,
+  submitBatch,
+  submitToken,
+} = require('../utils/problemUtility');
 
 const createProblem = async (req, res) => {
   try {
@@ -53,6 +58,39 @@ const createProblem = async (req, res) => {
       const resultToken = submitResult.map((result) => result.token);
 
       const testResult = await submitToken(resultToken);
+      // now the testresult can be 3 or more than 3 , if it is 3 then it is correct else , send wrong status
+      for (const test of testResult) {
+        if (test.status_id !== 3) {
+          return res.status(400).json({
+            message: `${language} reference solution failed on visible test cases.`,
+            error: test,
+          });
+        }
+      }
     }
-  } catch (error) {}
+
+    // now if all the language and complete code are checked , now add the problem in the database
+    const problem = await Problem.create({
+      title,
+      description,
+      difficulty,
+      tags,
+      visibleTestCases,
+      hiddenTestCases,
+      starterCode,
+      referenceSolution,
+      problemCreator: req.user._id,
+    });
+    res.status(201).json({
+      message: 'Problem created successfully.',
+      problem,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to create problem.',
+      error: err.message,
+    });
+  }
 };
+
+module.exports = { createProblem };
