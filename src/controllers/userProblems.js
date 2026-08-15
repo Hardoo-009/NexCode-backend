@@ -58,7 +58,7 @@ const createProblem = async (req, res) => {
       const resultToken = submitResult.map((result) => result.token);
 
       const testResult = await submitToken(resultToken);
-      // now the testresult can be 3 or more than 3 , if it is 3 then it is correct else , send wrong status
+      // now the testresult can be 3 or more than 3 , if it is 3 then it is correct else , send wrong status , the document should have the correct solution
       for (const test of testResult) {
         if (test.status_id !== 3) {
           return res.status(400).json({
@@ -152,6 +152,9 @@ const updateProblem = async (req, res) => {
       const resultToken = submitResult.map((result) => result.token);
       const testResult = await submitToken(resultToken);
 
+      // the updated problem should pass in the visible testcases or else return error
+      // the user has given a wrong solution for the given solution
+
       for (const test of testResult) {
         if (test.status_id !== 3) {
           return res.status(400).json({
@@ -166,7 +169,7 @@ const updateProblem = async (req, res) => {
     const newProblem = await Problem.findByIdAndUpdate(
       id,
       { ...req.body }, // update these fields
-      { runValidators: true, new: true },
+      { runValidators: true, returnDocument: 'after' }, // new: true old method
     );
     // normally in update operation the validators are not run by themselves so we have to make the runvalidators true ,and the new: true , tells to return the updated document not the previous one
 
@@ -234,4 +237,10 @@ const getAllProblem = async (req, res) => {
   }
 };
 
-module.exports = { createProblem, updateProblem, deleteProblem };
+module.exports = {
+  createProblem,
+  updateProblem,
+  deleteProblem,
+  getProblemById,
+  getAllProblem,
+};
