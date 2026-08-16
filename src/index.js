@@ -7,7 +7,7 @@ require('dotenv').config({
 });
 const authRouter = require('./routes/userAuth');
 const problemRouter = require('./routes/problemCreator');
-
+const submitRouter = require('./routes/submit');
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
@@ -16,6 +16,8 @@ app.use(cookieParser());
 app.use('/user', authRouter);
 // problemRouter route
 app.use('/problem', problemRouter);
+// submission router
+app.use('/submission', submitRouter);
 
 async function InitializeConnection() {
   try {

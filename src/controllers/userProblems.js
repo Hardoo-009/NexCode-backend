@@ -1,4 +1,5 @@
 const Problem = require('../models/problems');
+const Submission = require('../models/submission');
 const {
   getLanguageById,
   submitBatch,
@@ -59,6 +60,9 @@ const createProblem = async (req, res) => {
 
       const testResult = await submitToken(resultToken);
       // now the testresult can be 3 or more than 3 , if it is 3 then it is correct else , send wrong status , the document should have the correct solution
+
+      //console.log(testResult);
+
       for (const test of testResult) {
         if (test.status_id !== 3) {
           return res.status(400).json({
@@ -224,16 +228,55 @@ const getProblemById = async (req, res) => {
 
 const getAllProblem = async (req, res) => {
   try {
-    const getProblem = await Problem.find({}).select(
-      '_id title difficulty tags',
-    );
+    const getProblem = await Problem.find({})
+      .select('_id title difficulty tags')
+      .lean();
     // because the retured thing will be an array
     if (getProblem.length == 0) {
       return res.status(404).send('Problem not Available...');
     }
-    res.status(200).send(getProblem);
+    return res.status(200).json({
+      getProblem,
+    });
   } catch (err) {
-    res.status(404).send('Error : ' + err);
+    console.error(err);
+
+    return res.status(500).json({
+      message: 'Internal Server Error',
+    });
+  }
+};
+
+const getAllSolvedProblem = async (req, res) => {
+  try {
+    const user1 = await User.findById(req.user._id)
+      .select('problemSolved')
+      .populate({
+        path: 'problemSolved',
+        select: 'title difficulty tags',
+      })
+      .lean();
+
+    res.status(200).send(user1.problemSolved);
+  } catch (err) {
+    res.status(500).send('Server Error...');
+  }
+};
+
+const submittedproblem = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const problemId = req.params.pid;
+
+    const ans = await Submission.find({ userId, problemId })
+      .select('status language runtime memory createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.status(200).json({
+      submissions: ans,
+    });
+  } catch (error) {
+    return res.status(500).send('Internal Server Error!!!');
   }
 };
 
@@ -243,4 +286,6 @@ module.exports = {
   deleteProblem,
   getProblemById,
   getAllProblem,
+  getAllSolvedProblem,
+  submittedproblem,
 };

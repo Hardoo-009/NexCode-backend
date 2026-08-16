@@ -4,6 +4,8 @@ const {
   getProblemById,
   getAllProblem,
   deleteProblem,
+  getAllSolvedProblem,
+  submittedproblem,
 } = require('../controllers/userProblems');
 
 const express = require('express');
@@ -18,7 +20,7 @@ problemRouter.delete('/delete/:id', adminMiddleware, deleteProblem);
 // these can be accessed by the user as well as the admin
 problemRouter.get('/problemById/:id', userMiddleware, getProblemById);
 problemRouter.get('/getallproblem', userMiddleware, getAllProblem);
-// problemRouter.get('/problemsolvedbyuser', userMiddleware, getAllSolvedProblem);
-// problemRouter.get('/submittedproblem/:pid', userMiddleware, submittedproblem);
+problemRouter.get('/problemsolvedbyuser', userMiddleware, getAllSolvedProblem);
+problemRouter.get('/submittedproblem/:pid', userMiddleware, submittedproblem);
 
 module.exports = problemRouter;
