@@ -1,5 +1,6 @@
 const Problem = require('../models/problems');
 const Submission = require('../models/submission');
+const User = require('../models/user');
 const {
   getLanguageById,
   submitBatch,

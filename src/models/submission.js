@@ -44,7 +44,11 @@ const submissionSchema = new Schema(
   },
 );
 
-//submissionSchema.index({ userId: 1, problemId: 1 });
+submissionSchema.index({ userId: 1, problemId: 1 });
+// we have to make a index of a combination of userid and pid , compound indexing
+// and 1 here means ascending order , and only userId can also be an index here , because it is given in the beginning , it sorts first userId and then pid
+// a B+ tree is maintained to make efficient queries
+// _id are already indexed , and then making a thing as unique also makes a indexing of it
 
 const Submission = mongoose.model('submission', submissionSchema);
 module.exports = Submission;

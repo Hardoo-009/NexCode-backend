@@ -1,4 +1,4 @@
-const Problem = require('../models/problem');
+const Problem = require('../models/problems');
 const Submission = require('../models/submission');
 const {
   getLanguageById,
@@ -58,8 +58,9 @@ const submitCode = async (req, res) => {
     let memory = 0; // max of the memory required
     let status = 'accepted';
     let errorMessage = null;
-
+    console.log(testResults);
     for (const test of testResults) {
+      console.log(test.status_id);
       if (test.status_id === 3) {
         testCasesPassed++;
         runtime += parseFloat(test.time || 0);
