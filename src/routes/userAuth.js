@@ -8,6 +8,7 @@ const {
   logout,
   adminRegister,
   deleteProfile,
+  checkAuth,
 } = require('../controllers/userAuthenticate');
 
 // normal registration -> role = user
@@ -17,6 +18,7 @@ AuthRouter.post('/logout', userMiddleware, logout);
 // admin regististation can be done only by an admin itself , that is why another endpoint to make the admin register
 AuthRouter.post('/admin/register', adminMiddleware, adminRegister);
 AuthRouter.delete('/delete', userMiddleware, deleteProfile);
+AuthRouter.get('/check', userMiddleware, checkAuth);
 // AuthRouter.get('/getProfile', getProfile);
 
 module.exports = AuthRouter;

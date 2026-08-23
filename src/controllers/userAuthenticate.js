@@ -25,7 +25,16 @@ const register = async (req, res) => {
       sameSite: 'None',
       maxAge: 60 * 60 * 1000,
     });
-    return res.status(201).send('User registered successfully');
+    const reply = {
+      firstName: user.firstName,
+      emailId: user.emailId,
+      _id: user._id,
+      role: user.role,
+    };
+    return res.status(201).json({
+      user: reply,
+      message: 'User registered successfully',
+    });
   } catch (error) {
     return res.status(400).send('Error Occured ' + error);
   }
@@ -56,7 +65,16 @@ const login = async (req, res) => {
       sameSite: 'None',
       maxAge: 60 * 60 * 1000,
     });
-    return res.status(200).send('User logged In successfully');
+    const reply = {
+      firstName: user.firstName,
+      emailId: user.emailId,
+      _id: user._id,
+      role: user.role,
+    };
+    return res.status(200).json({
+      user: reply,
+      message: 'User logged in successfully',
+    });
   } catch (error) {
     return res.status(401).send('Error : ' + error.message);
   }
@@ -127,4 +145,24 @@ const deleteProfile = async (req, res) => {
     return res.status(500).send('Internal Server Error...');
   }
 };
-module.exports = { register, login, logout, adminRegister, deleteProfile };
+
+const checkAuth = (req, res) => {
+  const reply = {
+    firstName: req.user.firstName,
+    emailId: req.user.emailId,
+    _id: req.user._id,
+    role: req.user.role,
+  };
+  res.status(200).json({
+    user: reply,
+    message: 'Valid user',
+  });
+};
+module.exports = {
+  register,
+  login,
+  logout,
+  adminRegister,
+  deleteProfile,
+  checkAuth,
+};
