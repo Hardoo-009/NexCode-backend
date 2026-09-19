@@ -65,7 +65,6 @@ const submitToken = async (resultTokens) => {
 
       // have to check the status code of the results returned , if more than 3 then ok , or else , try again to get the result
       const isFinished = results.every((r) => r.status_id > 2);
-      console.log(results);
       // if the result is more than 2 then return the value
       if (isFinished) {
         return results;
