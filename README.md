@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🚀 LeetCode Clone Backend Architecture</h1>
+  <h1>🚀 Nexcode Backend Architecture</h1>
   <p>A robust, scalable backend service for an online coding judge platform.</p>
 
   <!-- Badges -->
