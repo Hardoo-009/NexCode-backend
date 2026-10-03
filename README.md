@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>🚀 Nexcode Backend Architecture</h1>
-  <p>A robust, scalable backend service for an online coding judge platform.</p>
+  <h1>🚀 LeetCode Clone — Scalable Backend Infrastructure</h1>
+  <p>An enterprise-grade, highly concurrent backend service for an online coding judge platform.</p>
 
   <!-- Badges -->
   <p>
@@ -8,115 +8,159 @@
     <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="ExpressJS" />
     <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
     <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
-    <img src="https://img.shields.io/badge/JSON_Web_Tokens-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
+    <img src="https://img.shields.io/badge/Judge0-000000?style=for-the-badge&logo=codeforces&logoColor=white" alt="Judge0 API" />
   </p>
 </div>
 
 ## 📖 Overview
 
-This project is the backend infrastructure for a fully-featured online judging system similar to LeetCode. Designed with scalability and security in mind, it provides robust REST APIs that handle secure user authentication, problem creation (via admin panels), and sandboxed remote code execution.
+This repository houses the core backend infrastructure for a fully-featured online judging system. Engineered with scalability, security, and low latency in mind, it provides robust RESTful APIs to handle stateless user authentication, administrative problem management, and asynchronous sandboxed remote code execution (RCE).
 
-This repository demonstrates my ability to build complex, stateful backends that integrate third-party services, manage multiple roles, and handle asynchronous job polling.
+As a showcase of modern backend engineering, this project demonstrates proficiency in system design, third-party service integration, and database optimization.
 
-## ✨ Key Features & Technical Decisions
+## 🌟 Key Architectural Decisions
 
-- **🔒 Secure Authentication & Authorization**
-  - **JWT & bcrypt:** Password hashing and stateless authentication.
-  - **Redis Token Blacklisting:** Implemented a secure logout mechanism by caching expired tokens in Redis to prevent replay attacks.
-  - **Role-Based Access Control (RBAC):** Distinct `admin` and `user` privileges. Only admins can create, modify, or delete coding problems.
-- **💻 Remote Code Execution (RCE) via Judge0**
-  - Securely compiles and executes user-submitted code in isolated sandboxes using the **Judge0 API**.
-  - Supports multiple languages: **C++, Java, and JavaScript**.
-  - Uses a **batching & polling mechanism** (`submitBatch`, `submitToken`) to evaluate code against multiple hidden test cases efficiently without blocking the main thread.
-- **🗄️ Optimized Database Architecture**
-  - **MongoDB & Mongoose:** Highly relational document design.
-  - **Compound Indexing:** Utilized compound indexes (`userId` + `problemId`) in the submissions schema via B+ trees to make query lookups blazingly fast.
+*   **Stateless yet Secure Authentication:** Implemented JWT-based authentication combined with **Redis-backed token blacklisting**. This solves the common vulnerability of JWTs being impossible to invalidate before expiration, ensuring enterprise-grade secure logouts.
+*   **Asynchronous Code Execution Pipeline:** Code evaluation via the **Judge0 API** is inherently time-consuming. To prevent thread blocking in Node.js, the system utilizes a batched submission and polling mechanism, securely executing untrusted user code (C++, Java, JavaScript) in isolated sandboxes.
+*   **Role-Based Access Control (RBAC):** Strict separation of concerns via Express middlewares. Administrative accounts hold exclusive rights to mutate problem sets and test cases, while standard users are restricted to execution and read contexts.
+*   **Optimized Data Access Patterns:** Leveraging **MongoDB** with Mongoose, the data access layer utilizes **Compound Indexing** (via B+ Trees) on `userId` and `problemId` across submissions to ensure `O(log N)` query performance even as the database scales.
 
 ## 🏗️ System Architecture
 
-The following diagram illustrates the lifecycle of a code submission:
+The following sequence diagram illustrates the non-blocking execution flow of a user's code submission:
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant Express Backend
-    participant MongoDB
-    participant Judge0 API
-
-    Client->>Express Backend: POST /submit/:id (code, language)
-    Express Backend->>MongoDB: Fetch Problem & Hidden Test Cases
-    Express Backend->>MongoDB: Create pending Submission record
-    Express Backend->>Judge0 API: submitBatch (Code + Test Cases)
-    Judge0 API-->>Express Backend: Return submission tokens
-
-    loop Polling (Max 15 tries)
-        Express Backend->>Judge0 API: GET /submissions/batch (tokens)
-        Judge0 API-->>Express Backend: Execution Results (Status, Time, Memory)
+    autonumber
+    actor Client
+    participant API as Express API (Node.js)
+    participant DB as MongoDB (Atlas)
+    participant Engine as Judge0 Execution Engine
+    
+    Client->>API: POST /submit/:problemId (Source Code)
+    API->>DB: Validate User Auth & Fetch Hidden Test Cases
+    API->>DB: Persist Initial Submission (Status: 'Pending')
+    API->>Engine: POST /submissions/batch (Batched Test Cases)
+    Engine-->>API: Return unique submission tokens
+    
+    loop Async Polling (Exponential Backoff Simulation)
+        API->>Engine: GET /submissions/batch?tokens=[...]
+        Engine-->>API: Execution Results (Status, Memory, CPU Time)
     end
-
-    Express Backend->>MongoDB: Update Submission (Accepted/Wrong/Error)
-    Express Backend->>MongoDB: Update User's solved problems list (if Accepted)
-    Express Backend-->>Client: Return Results (Runtime, Memory, Passed Cases)
+    
+    API->>DB: Mutate Submission Record (Verdict: Accepted/Wrong)
+    opt If Verdict == Accepted
+        API->>DB: Append Problem to User's Solved Array
+    end
+    API-->>Client: 201 Created (Execution Metrics & Verdict)
 ```
 
-## 🗃️ Database Models
+## 🗃️ Entity Relationship (ER) Diagram
 
-- **User Model:** Stores `firstName`, `emailId`, hashed `password`, `role` (user/admin), and an array of `problemSolved` references.
-- **Problem Model:** Contains `title`, `description`, `difficulty` (easy/medium/hard), `tags`, `visibleTestCases` (for dry runs), `hiddenTestCases` (for final evaluation), `starterCode`, and `referenceSolution`.
-- **Submission Model:** Links a `userId` to a `problemId`, storing the submitted `code`, `language`, `status` (accepted/wrong/error), `runtime`, `memory`, and error messages.
+The data layer is fully normalized where appropriate, preventing data duplication while maintaining document-oriented flexibility.
+
+```mermaid
+erDiagram
+    USER ||--o{ SUBMISSION : "attempts"
+    USER ||--o{ PROBLEM : "creates (Admin only)"
+    PROBLEM ||--o{ SUBMISSION : "receives"
+    
+    USER {
+        ObjectId _id PK
+        String firstName
+        String emailId
+        String password "bcrypt hashed"
+        String role "enum: user, admin"
+        Array problemSolved "Array of ObjectIds"
+    }
+    
+    PROBLEM {
+        ObjectId _id PK
+        String title
+        String description
+        String difficulty "enum: easy, medium, hard"
+        Array tags
+        Array visibleTestCases
+        Array hiddenTestCases
+        ObjectId problemCreator FK "Refers to User"
+    }
+    
+    SUBMISSION {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId problemId FK
+        String code
+        String language "enum: javascript, cpp, java"
+        String status "enum: pending, accepted, wrong, error"
+        Number runtime "in ms"
+        Number memory "in bytes"
+    }
+```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+*   **Node.js** (v16.x or higher)
+*   **MongoDB** (Local instance or Atlas cluster)
+*   **Redis** (For caching and token blacklisting)
+*   **Judge0 API Access** (Self-hosted or RapidAPI)
 
-- Node.js (v16+)
-- MongoDB instance (Local or Atlas)
-- Redis Server
+### Installation & Setup
 
-### Installation
-
-1. Clone the repository & install dependencies:
-
+1. **Clone the repository:**
    ```bash
    git clone <your-repo-url>
    cd leetcode-clone-backend
+   ```
+
+2. **Install dependencies:**
+   ```bash
    npm install
    ```
 
-2. Environment Variables (`.env`):
-
+3. **Environment Configuration:**
+   Create a `.env` file in the root directory:
    ```env
    PORT=3000
-   SECRET_KEY=your_jwt_secret_key
-   # MONGODB_URI and Redis credentials (if not hardcoded in config)
+   MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/leetcode
+   SECRET_KEY=your_highly_secure_jwt_secret
+   # Update src/config/redis.js with your Redis credentials if not local
    ```
 
-3. Start the server:
+4. **Initialize the Server:**
    ```bash
    npm run dev
    ```
 
-## 🔌 API Endpoints Summary
+## 🔌 Core API Endpoints
 
-| Route Category     | Endpoints                      | Description                                        |
-| :----------------- | :----------------------------- | :------------------------------------------------- |
-| **Authentication** | `POST /user/register`          | Register a normal user                             |
-|                    | `POST /user/login`             | Login and issue JWT via HTTP-only cookie           |
-|                    | `POST /user/logout`            | Logout and blacklist JWT in Redis                  |
-|                    | `POST /user/admin/register`    | Register an admin (Requires admin auth)            |
-| **Problems**       | `POST /problem/create`         | Create a new coding problem (Admin)                |
-|                    | `GET /problem/getallproblem`   | Fetch all problems                                 |
-|                    | `GET /problem/problemById/:id` | Fetch specific problem details                     |
-| **Submissions**    | `POST /submission/run/:id`     | Execute code against visible test cases            |
-|                    | `POST /submission/submit/:id`  | Execute code against hidden test cases, save to DB |
+### 🔐 Authentication (`/user`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/register` | Public | Registers a new standard user. |
+| `POST` | `/login` | Public | Authenticates and issues a secure `httpOnly` JWT cookie. |
+| `POST` | `/logout` | User/Admin | Invalidates the JWT by adding it to the Redis blacklist. |
+| `POST` | `/admin/register` | Admin | Registers a new administrative user. |
 
-## 🧠 What I Learned / Challenges Overcome
+### 🧩 Problem Management (`/problem`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/create` | Admin | Creates a new problem with hidden/visible test cases. |
+| `PUT` | `/update/:id` | Admin | Modifies an existing problem's parameters. |
+| `GET` | `/getallproblem` | User/Admin | Retrieves the paginated problem repository. |
+| `GET` | `/problemsolvedbyuser` | User/Admin | Retrieves problems successfully solved by the authenticated user. |
 
-- **Handling Asynchronous Webhooks vs Polling:** Integrating with Judge0 required handling asynchronous processing. I implemented a resilient polling mechanism with a retry limit to fetch execution results efficiently.
-- **Token Management:** Learned how stateless JWTs can be problematic for immediate revocation (logout), and solved this by utilizing Redis as an in-memory datastore for blacklisting tokens until they expire.
+### ⚙️ Code Execution (`/submission`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/run/:id` | User/Admin | Dry-run execution against visible test cases (Stateless). |
+| `POST` | `/submit/:id` | User/Admin | Final evaluation against hidden test cases. Persists results to DB. |
 
-## 📞 Contact / Portfolio
+## 🧠 Engineering Challenges & Learnings
 
-- **Author:** Souhardya Maji
-- **LinkedIn:** [https://www.linkedin.com/in/souhardya-maji/]
-- **GitHub:** [https://github.com/Hardoo-009]
+1. **Defeating JWT's Stateless Nature:** While JWTs are excellent for horizontal scaling, they pose a security risk on logout because they cannot be destroyed server-side. I engineered a robust solution utilizing **Redis**. When a user logs out, their specific token signature is cached in Redis with a TTL (Time-To-Live) matching the token's remaining expiration time. A custom middleware intercepts incoming requests and cross-references the Redis blacklist, effectively neutralizing stolen or logged-out tokens with `O(1)` time complexity.
+2. **Handling Unreliable Third-Party Latency:** The Judge0 API execution time is variable depending on the user's code complexity (e.g., an infinite loop `O(∞)`). Instead of blocking the Node.js event loop, I utilized asynchronous polling with bounded retries (`MAX_TRIES = 15`), ensuring the server remains responsive to other clients while waiting for execution verdicts.
+
+---
+*Architected and developed by **Souhardya Maji**.*  
+[LinkedIn](#) • [GitHub](#)
