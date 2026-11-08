@@ -9,6 +9,7 @@ require('dotenv').config({
 const authRouter = require('./routes/userAuth');
 const problemRouter = require('./routes/problemCreator');
 const submitRouter = require('./routes/submit');
+const aiRouter = require('./routes/aiChatting');
 const app = express();
 app.use(
   cors({
@@ -25,7 +26,8 @@ app.use('/user', authRouter);
 app.use('/problem', problemRouter);
 // submission router
 app.use('/submission', submitRouter);
-
+// aiRouter route
+app.use('/ai', aiRouter);
 async function InitializeConnection() {
   try {
     await Promise.all([main(), redisClient.connect()]);
