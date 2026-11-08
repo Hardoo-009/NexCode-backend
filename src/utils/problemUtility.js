@@ -45,6 +45,7 @@ const submitBatch = async (submissions) => {
 const waiting = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const submitToken = async (resultTokens) => {
+  // coverting the array of tokens into a string with comma separated values
   const tokenString = resultTokens.join(',');
 
   const options = {
@@ -71,7 +72,7 @@ const submitToken = async (resultTokens) => {
       }
       // if not then wait for some time and again
       console.log('Still processing... waiting 1 second');
-
+      // we are waiting because the judge0 api takes some time to process the submissions and return the result , so we are waiting for 1 second before trying again
       await waiting(1000);
     } catch (error) {
       console.error(

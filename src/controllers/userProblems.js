@@ -62,8 +62,6 @@ const createProblem = async (req, res) => {
       const testResult = await submitToken(resultToken);
       // now the testresult can be 3 or more than 3 , if it is 3 then it is correct else , send wrong status , the document should have the correct solution
 
-      //console.log(testResult);
-
       for (const test of testResult) {
         if (test.status_id !== 3) {
           return res.status(400).json({
@@ -229,6 +227,7 @@ const getProblemById = async (req, res) => {
 
 const getAllProblem = async (req, res) => {
   try {
+    // lean is used to return a plain JavaScript object instead of a Mongoose document, which can improve performance and reduce memory usage when you don't need the full functionality of a Mongoose document.
     const getProblem = await Problem.find({})
       .select('_id title difficulty tags')
       .lean();
@@ -257,7 +256,7 @@ const getAllSolvedProblem = async (req, res) => {
         select: 'title difficulty tags',
       })
       .lean();
-
+    // we are sending the problemSolved array of the user which contains the problems solved by the user, that's why no need of .json() because it is already a plain object and we are sending the whole array of problems solved by the user
     res.status(200).send(user1.problemSolved);
   } catch (err) {
     res.status(500).send('Server Error...');
@@ -269,9 +268,12 @@ const submittedproblem = async (req, res) => {
     const userId = req.user._id;
     const problemId = req.params.pid;
 
+    // this is why we made a composite index on userId and problemId in the submission model , so that we can query the submissions of a particular user for a particular problem
     const ans = await Submission.find({ userId, problemId })
-      .select('status language runtime memory createdAt')
-      .sort({ createdAt: -1 })
+      .select(
+        'status language runtime memory createdAt testCasesPassed testCasesTotal code errorMessage',
+      )
+      .sort({ createdAt: -1 }) // sort by createdAt in descending order to get the latest submission first
       .lean();
     return res.status(200).json({
       submissions: ans,

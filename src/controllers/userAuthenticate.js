@@ -107,7 +107,7 @@ const logout = async (req, res) => {
 // admin has the power of making a admin as well as a normal user
 const adminRegister = async (req, res) => {
   try {
-    // actually now the admin is being created , after going through the middleware
+    // actually now the admin is being created , after going through the middleware and checking the token if that was from the admin or not , then only the admin can create another admin
     validate(req.body);
     const { firstName, emailId, password } = req.body;
     req.body.password = await bcrypt.hash(password, 10);

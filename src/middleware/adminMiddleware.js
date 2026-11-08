@@ -5,7 +5,6 @@ const redisClient = require('../config/redis');
 // this is actually meant for checking if an admin is actually requesting to make another admin , the token of the requester is being checked here
 const adminMiddleware = async (req, res, next) => {
   try {
-    console.log('Hi');
     const token = req.cookies.token;
     if (!token) {
       return res.status(401).send('Token is not present.');

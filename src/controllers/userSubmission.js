@@ -158,6 +158,7 @@ const runCode = async (req, res) => {
     let runtime = 0;
     let memory = 0;
 
+    // we are mapping the testResults to get the required data for each test case and also calculating the total runtime and max memory used , and creating a new array of test cases with the required data to send back to the user
     const mappedTestCases = testResults.map((test, index) => {
       const passed = test.status.id === 3;
       if (!passed) allPassed = false;
