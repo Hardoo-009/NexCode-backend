@@ -2,6 +2,7 @@ const validate = require('../utils/validate');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
+const Submission = require('../models/submission');
 const redisClient = require('../config/redis');
 // register -> during the registration the user will get a jwt
 const register = async (req, res) => {

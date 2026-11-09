@@ -1,8 +1,6 @@
 const cloudinary = require('cloudinary').v2;
-const Problem = require('../models/problem');
-const User = require('../models/user');
+const Problem = require('../models/problems');
 const SolutionVideo = require('../models/solutionVideo');
-const { sanitizeFilter } = require('mongoose');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -79,13 +77,23 @@ const saveVideoMetadata = async (req, res) => {
     }
 
     const thumbnailUrl = cloudinary.url(cloudinaryResource.public_id, {
-      resource_type: 'image',
-      transformation: [
-        { width: 400, height: 225, crop: 'fill' },
-        { quality: 'auto' },
-        { start_offset: 'auto' },
-      ],
+      resource_type: 'video',
+      type: 'upload',
+      secure: true,
       format: 'jpg',
+      transformation: [
+        {
+          width: 400,
+          height: 225,
+          crop: 'fill',
+        },
+        {
+          quality: 'auto',
+        },
+        {
+          start_offset: '2',
+        },
+      ],
     });
 
     // Create video solution record
