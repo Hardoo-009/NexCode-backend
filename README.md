@@ -79,7 +79,7 @@ flowchart TB
 
     subgraph Gateway["API Gateway / Node.js Express 5 Engine"]
         AuthMid["Auth & RBAC Middleware"]
-        Router["Express Routers (/user, /problem, /submission, /ai, /video)"]
+        Router["Express Routers: user, problem, submission, ai, video"]
         StreamHandler["AI SSE / Chunk Streamer"]
         SignatureGen["Cloudinary Signature Gen"]
     end
@@ -91,13 +91,13 @@ flowchart TB
 
     subgraph ThirdParty["External Distributed Services"]
         Judge0["Judge0 Remote Code Execution API"]
-        Groq["Groq Cloud LLM (gpt-oss-20b)"]
+        Groq["Groq Cloud LLM - gpt-oss-20b"]
         Gemini["Google Gemini 3.8 Flash"]
         Cloudinary["Cloudinary Video CDN"]
     end
 
-    Web -->|HTTP Requests / Cookies| Gateway
-    AuthMid -->|Verify JWT & Check Blacklist O(1)| Redis
+    Web -->|HTTP Requests & Cookies| Gateway
+    AuthMid -->|Verify JWT & Check Blacklist - O1 Time| Redis
     Router -->|Read / Write Models| MongoDB
     Router -->|Batch Code Submissions & Polling| Judge0
     StreamHandler -->|Abortable LLM Token Stream| Groq
@@ -122,28 +122,28 @@ sequenceDiagram
     participant DB as MongoDB Atlas
     participant J0 as Judge0 Cloud Cluster
 
-    User->>API: POST /submission/submit/:id { code, language }
+    User->>API: POST /submission/submit/:id (code, language)
     API->>Redis: Check token blacklist
-    Redis-->>API: Valid session
+    Redis-->>API: Valid session verified
     API->>DB: Fetch problem details & hidden test cases
-    API->>DB: Insert initial submission (status: "pending")
+    API->>DB: Insert initial submission (status: pending)
     
     API->>J0: POST /submissions/batch (source_code, stdin, expected_output)
-    J0-->>API: 201 Created [{ token: "uuid-1" }, { token: "uuid-2" }]
+    J0-->>API: 201 Created - returns submission tokens
     
     loop Polling with Interval (Max 15 Retries)
-        API->>J0: GET /submissions/batch?tokens=uuid-1,uuid-2
+        API->>J0: GET /submissions/batch?tokens=...
         J0-->>API: Submissions Status (status_id, time, memory)
-        Note over API: Wait until all tests finish (status_id > 2)
+        Note over API: Poll until all tests finish (status_id > 2)
     end
 
     alt All Test Cases Accepted (status_id == 3)
-        API->>DB: Update submission (status: "accepted", total runtime, peak memory)
-        API->>DB: Push problemId to User.problemSolved (if unique)
-    else Any Test Case Failed / Error
-        API->>DB: Update submission (status: "wrong" | "error", errorMessage)
+        API->>DB: Update submission (status: accepted, total runtime, peak memory)
+        API->>DB: Push problemId to User.problemSolved if unique
+    else Any Test Case Failed or Errored
+        API->>DB: Update submission (status: wrong / error, errorMessage)
     end
-    API-->>User: 201 Created { accepted, passedTestCases, totalTestCases, runtime, memory }
+    API-->>User: 201 Created (verdict, execution metrics, passed test cases)
 ```
 
 ### 2. High-Performance Direct Video Upload Architecture
@@ -158,17 +158,17 @@ sequenceDiagram
 
     Admin->>API: GET /video/create/:problemId (Requires Admin JWT)
     API->>API: Generate unique public_id & HMAC-SHA signature
-    API-->>Admin: Return { signature, timestamp, public_id, api_key, upload_url }
+    API-->>Admin: Return signature, timestamp, public_id, api_key, upload_url
     
     Admin->>Cloud: POST direct upload with signature & video binary
-    Cloud-->>Admin: 200 OK { secure_url, public_id, duration }
+    Cloud-->>Admin: 200 OK - secure_url, public_id, duration
     
-    Admin->>API: POST /video/save { problemId, cloudinaryPublicId, secureUrl, duration }
+    Admin->>API: POST /video/save (problemId, cloudinaryPublicId, secureUrl, duration)
     API->>Cloud: GET /resources/video/:publicId (Verify authenticity)
     Cloud-->>API: Verified asset details
     API->>API: Generate dynamic thumbnail URL (400x225, auto quality, offset 2s)
     API->>DB: Persist SolutionVideo record
-    API-->>Admin: 201 Created { videoSolution }
+    API-->>Admin: 201 Created - video solution saved
 ```
 
 ### 3. Abortable AI Doubt Solver Stream
@@ -180,20 +180,20 @@ sequenceDiagram
     participant API as Express API
     participant Groq as Groq AI Engine (Llama)
 
-    User->>API: POST /ai/chat { messages, title, code, language, ... }
+    User->>API: POST /ai/chat (messages, problem context, user code)
     API->>API: Build system prompt & truncate history to 12 turns
-    API->>Groq: chat.completions.create(stream: true, signal: abortSignal)
+    API->>Groq: chat.completions.create with stream & abortSignal
     API-->>User: HTTP 200 Chunked Stream (Transfer-Encoding: chunked)
     
     loop Token Streaming
-        Groq-->>API: Chunk delta
+        Groq-->>API: Yield token chunk
         API-->>User: res.write(chunk)
     end
 
-    opt User Closes Tab / Aborts Request
+    opt User Closes Tab or Cancels
         User--xAPI: Client Socket Close
         API->>API: abortController.abort()
-        API--xGroq: Terminate upstream stream
+        API--xGroq: Terminate upstream inference
     end
 ```
 
@@ -204,8 +204,8 @@ sequenceDiagram
 ```mermaid
 erDiagram
     USER ||--o{ SUBMISSION : "submits"
-    USER ||--o{ PROBLEM : "authors (admin)"
-    USER ||--o{ SOLUTION_VIDEO : "publishes (admin)"
+    USER ||--o{ PROBLEM : "authors"
+    USER ||--o{ SOLUTION_VIDEO : "publishes"
     PROBLEM ||--o{ SUBMISSION : "evaluated_against"
     PROBLEM ||--o| SOLUTION_VIDEO : "has_editorial"
 
@@ -215,7 +215,7 @@ erDiagram
         String lastName "opt, 3-20 chars"
         String emailId "req, unique, indexed"
         Number age "range 6-80"
-        String role "enum: user | admin"
+        String role "enum: user, admin"
         ObjectId_Array problemSolved "refs: problem"
         String password "bcrypt hashed"
         Date createdAt
@@ -226,7 +226,7 @@ erDiagram
         ObjectId _id PK
         String title "req, trimmed"
         String description "req"
-        String difficulty "enum: easy | medium | hard"
+        String difficulty "enum: easy, medium, hard"
         String_Array tags "array, linkedlist, graph, dp"
         Array visibleTestCases "input, output, explanation"
         Array hiddenTestCases "input, output"
@@ -242,11 +242,11 @@ erDiagram
         ObjectId userId FK "Compound Indexed"
         ObjectId problemId FK "Compound Indexed"
         String code "req"
-        String language "enum: javascript | cpp | java"
-        String status "enum: pending | accepted | wrong | error"
-        Number runtime "total runtime (s)"
-        Number memory "peak memory (KB)"
-        String errorMessage "stderr / compile_output"
+        String language "enum: javascript, cpp, java"
+        String status "enum: pending, accepted, wrong, error"
+        Number runtime "total runtime in seconds"
+        Number memory "peak memory in KB"
+        String errorMessage "stderr, compile_output"
         Number testCasesPassed
         Number testCasesTotal
         Date createdAt
@@ -256,7 +256,7 @@ erDiagram
     SOLUTION_VIDEO {
         ObjectId _id PK
         ObjectId problemId FK "refs: problem"
-        ObjectId userId FK "refs: user (admin)"
+        ObjectId userId FK "refs: user admin"
         String cloudinaryPublicId "unique, indexed"
         String secureUrl "CDN video link"
         String thumbnailUrl "auto-generated poster"
