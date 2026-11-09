@@ -1,6 +1,7 @@
 const Problem = require('../models/problems');
 const Submission = require('../models/submission');
 const User = require('../models/user');
+const SolutionVideo = require('../models/solutionVideo');
 const {
   getLanguageById,
   submitBatch,
@@ -216,8 +217,18 @@ const getProblemById = async (req, res) => {
     if (!getProblem) {
       return res.status(404).send('Problem not Available...');
     }
-    //Turn the Mongoose result into a normal object because we're going to add some extra properties to it, and we want those extra properties to appear in the API response.(ad-hoc)
+    const videos = await SolutionVideo.findOne({ problemId: id });
+
+    // Convert the Mongoose document to a plain JavaScript object, to add extra fields to it, because we technically can add extra fields to a mongoose document, but depends on the express parser and the way it is implemented, so to be safe we will convert it to a plain object and then add the extra fields to it
     const responseProblem = getProblem.toObject();
+
+    // Add the video information to the response problem
+    if (videos) {
+      responseProblem.secureUrl = videos.secureUrl;
+      responseProblem.cloudinaryPublicId = videos.cloudinaryPublicId;
+      responseProblem.thumbnailUrl = videos.thumbnailUrl;
+      responseProblem.duration = videos.duration;
+    }
 
     return res.status(200).send(responseProblem);
   } catch (error) {
